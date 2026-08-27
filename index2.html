@@ -1,0 +1,3557 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CASE ZERO — Online Detective</title>
+
+<!-- PeerJS: realtime P2P connection -->
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+<style>
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+}
+
+:root{
+    --bg:#08090d;
+    --panel:#11141b;
+    --panel2:#171b24;
+    --line:#2b303c;
+    --text:#f1f2f5;
+    --muted:#9298a6;
+    --gold:#d9aa55;
+    --red:#d85b61;
+    --green:#58b58a;
+    --blue:#6895d8;
+}
+
+body{
+    background:
+        radial-gradient(circle at top,#1b1d28,#08090d 55%);
+    color:var(--text);
+    font-family:Arial,Helvetica,sans-serif;
+    min-height:100vh;
+}
+
+button,input,textarea{
+    font:inherit;
+}
+
+button{
+    cursor:pointer;
+}
+
+.hidden{
+    display:none!important;
+}
+
+#app{
+    width:min(1200px,94%);
+    margin:auto;
+    padding:25px 0 60px;
+}
+
+.screen{
+    min-height:90vh;
+}
+
+.center-screen{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.logo{
+    font-size:clamp(55px,10vw,105px);
+    line-height:.82;
+    font-weight:1000;
+    letter-spacing:-5px;
+    text-align:center;
+    text-shadow:0 0 35px rgba(217,170,85,.18);
+}
+
+.kicker{
+    color:var(--gold);
+    letter-spacing:4px;
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:15px;
+}
+
+.subtitle{
+    max-width:680px;
+    margin:30px auto;
+    text-align:center;
+    color:var(--muted);
+    line-height:1.7;
+}
+
+.card{
+    background:rgba(17,20,27,.95);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:25px;
+    box-shadow:0 20px 70px rgba(0,0,0,.3);
+}
+
+.narrow{
+    width:min(600px,100%);
+    margin:auto;
+}
+
+h1,h2,h3{
+    margin-bottom:12px;
+}
+
+.muted{
+    color:var(--muted);
+}
+
+.gold{
+    color:var(--gold);
+}
+
+input,textarea{
+    width:100%;
+    border:1px solid var(--line);
+    background:#0b0d12;
+    color:white;
+    padding:13px 15px;
+    border-radius:11px;
+    outline:none;
+}
+
+textarea{
+    min-height:130px;
+    resize:vertical;
+}
+
+input:focus,
+textarea:focus{
+    border-color:var(--gold);
+}
+
+.btn{
+    border:1px solid var(--line);
+    background:#171b24;
+    color:white;
+    padding:13px 18px;
+    border-radius:11px;
+    font-weight:bold;
+    transition:.15s;
+}
+
+.btn:hover{
+    transform:translateY(-2px);
+    border-color:#555c6b;
+}
+
+.btn-primary{
+    background:linear-gradient(135deg,#b88838,#e1b963);
+    color:#15110a;
+    border:0;
+}
+
+.btn-danger{
+    background:#492126;
+    border-color:#74353d;
+}
+
+.btn-green{
+    background:#173d2f;
+    border-color:#2f765a;
+}
+
+.row{
+    display:flex;
+    gap:10px;
+}
+
+.row>*{
+    flex:1;
+}
+
+.stack{
+    display:grid;
+    gap:12px;
+}
+
+.mt{
+    margin-top:20px;
+}
+
+/* HOME */
+
+.home-buttons{
+    display:grid;
+    gap:12px;
+    max-width:420px;
+    margin:30px auto 0;
+}
+
+.version{
+    text-align:center;
+    color:#555b68;
+    margin-top:35px;
+    font-size:12px;
+}
+
+/* PROFILE */
+
+.profile-box{
+    margin-bottom:20px;
+}
+
+.profile-box label{
+    display:block;
+    margin-bottom:7px;
+    color:var(--muted);
+    font-size:13px;
+}
+
+/* LOBBY */
+
+.room-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:20px;
+}
+
+.room-code{
+    font-size:32px;
+    letter-spacing:7px;
+    font-weight:1000;
+    color:var(--gold);
+}
+
+.players{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+}
+
+.player-card{
+    background:#0c0f14;
+    border:1px solid var(--line);
+    padding:18px;
+    border-radius:15px;
+    min-height:105px;
+}
+
+.player-card.host{
+    border-color:#7e6231;
+}
+
+.dot{
+    display:inline-block;
+    width:9px;
+    height:9px;
+    background:var(--green);
+    border-radius:50%;
+    margin-right:6px;
+}
+
+.player-role{
+    color:var(--muted);
+    font-size:12px;
+    margin-top:8px;
+}
+
+.invite-box{
+    background:#0c0f14;
+    padding:15px;
+    border-radius:12px;
+    margin-top:15px;
+}
+
+/* GAME */
+
+.game-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:18px;
+}
+
+.phase{
+    color:var(--gold);
+    font-size:12px;
+    letter-spacing:3px;
+    font-weight:bold;
+}
+
+.game-layout{
+    display:grid;
+    grid-template-columns:260px 1fr 290px;
+    gap:15px;
+}
+
+.panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:17px;
+    overflow:hidden;
+}
+
+.panel-title{
+    padding:15px;
+    border-bottom:1px solid var(--line);
+    font-weight:bold;
+}
+
+.panel-body{
+    padding:15px;
+}
+
+.nav-btn{
+    width:100%;
+    text-align:left;
+    border:0;
+    background:transparent;
+    color:#c7cbd4;
+    padding:12px;
+    border-radius:9px;
+    margin-bottom:5px;
+}
+
+.nav-btn:hover,
+.nav-btn.active{
+    background:#1b202a;
+    color:white;
+}
+
+.dossier{
+    min-height:560px;
+}
+
+.page-title{
+    color:var(--gold);
+    letter-spacing:1px;
+    margin-bottom:18px;
+}
+
+.page-number{
+    color:var(--muted);
+    font-size:12px;
+    margin-bottom:15px;
+}
+
+.page-content{
+    color:#d2d5dc;
+    line-height:1.8;
+    white-space:pre-line;
+}
+
+.page-controls{
+    display:flex;
+    justify-content:space-between;
+    margin-top:30px;
+}
+
+.clue{
+    background:#0c0f14;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:13px;
+    margin-bottom:9px;
+}
+
+.clue-title{
+    font-weight:bold;
+    margin-bottom:5px;
+}
+
+.clue-text{
+    color:var(--muted);
+    font-size:13px;
+    line-height:1.5;
+}
+
+.note{
+    margin-top:12px;
+}
+
+.chat{
+    height:260px;
+    overflow-y:auto;
+    background:#0b0d12;
+    padding:10px;
+    border-radius:10px;
+}
+
+.message{
+    margin-bottom:10px;
+}
+
+.message-name{
+    font-size:11px;
+    color:var(--gold);
+    font-weight:bold;
+}
+
+.message-text{
+    color:#d2d5dc;
+    font-size:13px;
+    line-height:1.4;
+}
+
+.chat-send{
+    display:flex;
+    gap:7px;
+    margin-top:8px;
+}
+
+.chat-send input{
+    flex:1;
+}
+
+.chat-send button{
+    flex:0;
+}
+
+/* VOTE */
+
+.vote-grid{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:12px;
+}
+
+.vote-card{
+    background:#0b0e13;
+    border:1px solid var(--line);
+    padding:20px;
+    border-radius:14px;
+    text-align:center;
+}
+
+.vote-card button{
+    width:100%;
+    margin-top:12px;
+}
+
+/* RESULT */
+
+.result{
+    text-align:center;
+}
+
+.result-icon{
+    font-size:70px;
+    margin-bottom:15px;
+}
+
+.result-box{
+    max-width:700px;
+    margin:25px auto;
+    background:#0c0f14;
+    border:1px solid var(--line);
+    border-radius:15px;
+    padding:22px;
+    text-align:left;
+}
+
+.timeline-item{
+    border-left:2px solid var(--gold);
+    padding:4px 0 12px 15px;
+    margin-bottom:8px;
+}
+
+.timeline-time{
+    color:var(--gold);
+    font-weight:bold;
+}
+
+/* FRIENDS */
+
+.friend{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:11px;
+    background:#0c0f14;
+    border-radius:10px;
+    margin-bottom:8px;
+}
+
+/* TOAST */
+
+#toast{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    max-width:350px;
+    padding:14px 17px;
+    border-radius:12px;
+    background:#202631;
+    border:1px solid #3a424f;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+    opacity:0;
+    transform:translateY(20px);
+    pointer-events:none;
+    transition:.2s;
+    z-index:9999;
+}
+
+#toast.show{
+    opacity:1;
+    transform:translateY(0);
+}
+
+/* RESPONSIVE */
+
+@media(max-width:950px){
+    .game-layout{
+        grid-template-columns:1fr;
+    }
+
+    .players{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+
+@media(max-width:600px){
+    #app{
+        width:94%;
+    }
+
+    .players,
+    .vote-grid{
+        grid-template-columns:1fr;
+    }
+
+    .row{
+        flex-direction:column;
+    }
+
+    .room-top{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+
+<!-- =====================================================
+ HOME
+===================================================== -->
+
+<section id="home" class="screen center-screen">
+
+<div class="narrow">
+
+<div class="kicker">ONLINE DETECTIVE GAME</div>
+
+<div class="logo">
+CASE<br>ZERO
+</div>
+
+<div class="subtitle">
+Bốn người bước vào cùng một vụ án.
+Mỗi người sở hữu một phần sự thật.
+Không ai biết toàn bộ câu chuyện.
+<strong>Hãy tìm ra hung thủ.</strong>
+</div>
+
+<div class="card">
+
+<div class="profile-box">
+<label>TÊN CỦA BẠN</label>
+<input id="username"
+       placeholder="Ví dụ: Trang"
+       maxlength="24">
+</div>
+
+<div class="home-buttons">
+
+<button class="btn btn-primary"
+        onclick="createRoom()">
+🏠 TẠO PHÒNG
+</button>
+
+<button class="btn"
+        onclick="showJoin()">
+🔗 THAM GIA PHÒNG
+</button>
+
+<button class="btn"
+        onclick="showFriends()">
+👥 BẠN BÈ
+</button>
+
+</div>
+
+</div>
+
+<div class="version">
+CASE ZERO • ONLINE MVP • 4 PLAYERS
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ JOIN
+===================================================== -->
+
+<section id="join" class="screen center-screen hidden">
+
+<div class="narrow card">
+
+<h2>🔗 THAM GIA PHÒNG</h2>
+
+<p class="muted">
+Nhập mã 6 ký tự mà người tạo phòng gửi cho bạn.
+</p>
+
+<div class="stack mt">
+
+<input id="join-code"
+       maxlength="6"
+       placeholder="ABC123"
+       style="text-transform:uppercase">
+
+<button class="btn btn-primary"
+        onclick="joinRoom()">
+THAM GIA
+</button>
+
+<button class="btn"
+        onclick="showScreen('home')">
+← Quay lại
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ FRIENDS
+===================================================== -->
+
+<section id="friends" class="screen hidden">
+
+<div class="card narrow">
+
+<h2>👥 BẠN BÈ</h2>
+
+<p class="muted">
+Danh sách bạn được lưu trên trình duyệt này.
+Bạn có thể gửi mã phòng cho bạn bè để họ tham gia.
+</p>
+
+<div class="row mt">
+
+<input id="friend-name"
+       placeholder="Tên bạn">
+
+<button class="btn btn-primary"
+        onclick="addFriend()">
++ Thêm
+</button>
+
+</div>
+
+<div id="friend-list" class="mt"></div>
+
+<button class="btn mt"
+        onclick="showScreen('home')">
+← Quay lại
+</button>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ LOBBY
+===================================================== -->
+
+<section id="lobby" class="screen hidden">
+
+<div class="room-top">
+
+<div>
+<div class="phase">PRIVATE CASE ROOM</div>
+<div class="room-code"
+     id="room-code-display">
+------
+</div>
+</div>
+
+<div>
+<button class="btn"
+        onclick="copyRoomCode()">
+📋 COPY MÃ
+</button>
+
+<button class="btn btn-danger"
+        onclick="leaveRoom()">
+Rời phòng
+</button>
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>👥 Người chơi</h2>
+
+<p class="muted">
+Cần đủ 4 người để bắt đầu vụ án.
+</p>
+
+<div id="lobby-players"
+     class="players mt">
+</div>
+
+<div class="invite-box">
+<strong>🔗 Mời bạn:</strong>
+<br>
+<span class="muted">
+Gửi mã phòng
+</span>
+<strong id="invite-code"></strong>
+cho 3 người còn lại.
+</div>
+
+<div id="host-controls"
+     class="mt hidden">
+
+<button class="btn btn-primary"
+        style="width:100%"
+        onclick="hostStartCase()">
+🕵️ BẮT ĐẦU VỤ ÁN
+</button>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ GAME
+===================================================== -->
+
+<section id="game" class="screen hidden">
+
+<div class="game-header">
+
+<div>
+<div class="phase"
+     id="game-phase">
+INVESTIGATION
+</div>
+
+<h2 id="case-title">
+CASE
+</h2>
+</div>
+
+<button class="btn btn-danger"
+        onclick="confirmLeave()">
+Thoát
+</button>
+
+</div>
+
+<div class="game-layout">
+
+<!-- LEFT -->
+
+<div class="panel">
+
+<div class="panel-title">
+📁 HỒ SƠ CỦA TÔI
+</div>
+
+<div class="panel-body"
+     id="page-nav">
+</div>
+
+</div>
+
+
+<!-- CENTER -->
+
+<div class="panel dossier">
+
+<div class="panel-body">
+
+<div id="dossier-view"></div>
+
+</div>
+
+</div>
+
+
+<!-- RIGHT -->
+
+<div class="stack">
+
+<div class="panel">
+
+<div class="panel-title">
+🔍 MANH MỐI
+</div>
+
+<div class="panel-body"
+     id="clue-list">
+</div>
+
+</div>
+
+
+<div class="panel">
+
+<div class="panel-title">
+📝 GHI CHÚ RIÊNG
+</div>
+
+<div class="panel-body">
+
+<textarea id="private-note"
+          placeholder="Ghi lại suy luận của bạn..."></textarea>
+
+<button class="btn mt"
+        style="width:100%"
+        onclick="saveNote()">
+💾 Lưu ghi chú
+</button>
+
+</div>
+
+</div>
+
+
+<div class="panel">
+
+<div class="panel-title">
+💬 THẢO LUẬN
+</div>
+
+<div class="panel-body">
+
+<div id="chat"
+     class="chat"></div>
+
+<div class="chat-send">
+
+<input id="chat-input"
+       placeholder="Nói gì đó...">
+
+<button class="btn btn-primary"
+        onclick="sendChat()">
+➤
+</button>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ VOTE
+===================================================== -->
+
+<section id="vote" class="screen hidden">
+
+<div class="card">
+
+<div class="phase">
+FINAL VOTE
+</div>
+
+<h1>🗳️ AI LÀ HUNG THỦ?</h1>
+
+<p class="muted">
+Phiếu của bạn là bí mật.
+Không ai nhìn thấy bạn đã vote ai cho đến khi tất cả bỏ phiếu.
+</p>
+
+<div id="vote-grid"
+     class="vote-grid mt">
+</div>
+
+<div id="vote-status"
+     class="muted mt"
+     style="text-align:center">
+Chưa bỏ phiếu.
+</div>
+
+</div>
+
+</section>
+
+
+<!-- =====================================================
+ RESULT
+===================================================== -->
+
+<section id="result" class="screen hidden">
+
+<div class="card result">
+
+<div class="result-icon">
+🔎
+</div>
+
+<div class="phase">
+CASE CLOSED
+</div>
+
+<h1>VỤ ÁN ĐÃ ĐƯỢC GIẢI QUYẾT</h1>
+
+<div id="result-main"></div>
+
+<div class="result-box">
+
+<h3>⏱️ DÒNG THỜI GIAN</h3>
+
+<div id="timeline"></div>
+
+</div>
+
+<div class="result-box">
+
+<h3>📜 KẾT THÚC</h3>
+
+<p id="ending"
+   class="muted"
+   style="line-height:1.8">
+</p>
+
+</div>
+
+<button class="btn btn-primary"
+        onclick="playAgain()">
+🔄 CHƠI LẠI
+</button>
+
+<button class="btn"
+        onclick="leaveRoom()">
+🏠 Về trang chủ
+</button>
+
+</div>
+
+</section>
+
+</div>
+
+<div id="toast"></div>
+
+
+<script>
+/* =====================================================
+ CASE ZERO
+===================================================== */
+
+/*
+    MASTER CASE
+
+    Host giữ toàn bộ case.
+    Người chơi chỉ nhận dossier của chính mình.
+*/
+
+const MASTER_CASE = {
+
+    id:"CASE-001",
+
+    title:"VỤ ÁN TẠI BIỆT THỰ SƯƠNG ĐÊM",
+
+    culpritRole:"ROLE_03",
+
+    timeline:[
+        {
+            time:"18:30",
+            event:"Bốn người cùng có mặt tại biệt thự."
+        },
+        {
+            time:"19:10",
+            event:"Bữa tối kết thúc."
+        },
+        {
+            time:"19:45",
+            event:"Một cuộc tranh cãi xảy ra tại phòng khách."
+        },
+        {
+            time:"20:10",
+            event:"Một người rời khỏi phòng khách."
+        },
+        {
+            time:"20:15",
+            event:"Toàn bộ biệt thự mất điện."
+        },
+        {
+            time:"20:19",
+            event:"Điện được khôi phục."
+        },
+        {
+            time:"20:23",
+            event:"Một tiếng động lớn được nghe thấy ở tầng hai."
+        },
+        {
+            time:"20:30",
+            event:"Vụ án được phát hiện."
+        }
+    ],
+
+    dossiers:[
+
+        {
+            role:"ROLE_01",
+
+            pages:[
+                {
+                    title:"Thông tin cá nhân",
+                    content:
+`Bạn là một trong bốn người có mặt tại biệt thự.
+
+Bạn từng có quan hệ làm ăn với nạn nhân.
+
+Trong thời gian gần đây, quan hệ giữa hai người không còn tốt đẹp.
+
+Bạn biết rằng tối nay sẽ có một cuộc nói chuyện quan trọng.`
+                },
+
+                {
+                    title:"Lời khai",
+                    content:
+`Bạn khai rằng mình ở phòng khách phần lớn buổi tối.
+
+Bạn nhớ rằng khoảng 20:10, bạn nhìn thấy một người đi về phía hành lang.
+
+Bạn không chắc người đó là ai vì ánh sáng trong nhà khá yếu.`
+                },
+
+                {
+                    title:"Lịch trình",
+                    content:
+`18:30 — Có mặt tại biệt thự.
+
+19:10 — Ăn tối.
+
+19:45 — Có mặt tại phòng khách.
+
+20:10 — Vẫn ở phòng khách.
+
+20:15 — Mất điện.
+
+20:19 — Điện trở lại.
+
+20:23 — Nghe tiếng động tầng hai.`
+                },
+
+                {
+                    title:"Tin nhắn",
+                    content:
+`Một tin nhắn bạn nhận được lúc 19:52:
+
+"Đừng nghĩ chuyện tối nay sẽ kết thúc dễ dàng."
+
+Người gửi không được lưu tên.
+
+Bạn chưa cho những người khác xem tin nhắn này.`
+                },
+
+                {
+                    title:"Vật chứng",
+                    content:
+`Bạn để ý thấy một chiếc chìa khóa nhỏ nằm gần cầu thang.
+
+Bạn không nhớ đã từng nhìn thấy chiếc chìa khóa này trước đó.
+
+Trên chìa khóa có một vết xước hình chữ X.`
+                },
+
+                {
+                    title:"Bí mật",
+                    content:
+`Bạn thực sự đã nói chuyện riêng với nạn nhân trước bữa tối.
+
+Hai người tranh cãi.
+
+Bạn không muốn những người khác biết chuyện này vì sợ bị nghi ngờ.
+
+Tuy nhiên, bạn KHÔNG phải người gây ra vụ án.`
+                }
+            ],
+
+            clues:[
+                {
+                    title:"Tin nhắn nặc danh",
+                    content:"Có người đã cảnh báo nạn nhân trước khi vụ án xảy ra."
+                }
+            ]
+        },
+
+
+        {
+            role:"ROLE_02",
+
+            pages:[
+                {
+                    title:"Thông tin cá nhân",
+                    content:
+`Bạn là người quen lâu năm của nạn nhân.
+
+Bạn từng được nạn nhân tin tưởng.
+
+Tuy nhiên gần đây bạn phát hiện một bí mật liên quan đến tài chính của họ.`
+                },
+
+                {
+                    title:"Lời khai",
+                    content:
+`Bạn nói rằng khoảng 20:10 bạn ở khu vực bếp.
+
+Bạn nghe thấy tiếng cửa đóng.
+
+Bạn không nhìn thấy ai bước ra khỏi hành lang.`
+                },
+
+                {
+                    title:"Lịch trình",
+                    content:
+`18:30 — Có mặt.
+
+19:10 — Ăn tối.
+
+19:45 — Đi vào bếp.
+
+20:05 — Ở khu vực bếp.
+
+20:10 — Nghe tiếng cửa.
+
+20:15 — Mất điện.
+
+20:19 — Điện trở lại.`
+                },
+
+                {
+                    title:"Tin nhắn",
+                    content:
+`19:38:
+
+Nạn nhân nhắn:
+
+"Tôi đã biết chuyện rồi."
+
+Bạn không biết họ đang nói tới chuyện gì.`
+                },
+
+                {
+                    title:"Vật chứng",
+                    content:
+`Bạn phát hiện một chiếc khăn tay màu tối ở gần cửa bếp.
+
+Chiếc khăn có mùi nước hoa lạ.
+
+Bạn đã cất nó đi vì sợ bị hiểu lầm.`
+                },
+
+                {
+                    title:"Bí mật",
+                    content:
+`Bạn từng lấy một tài liệu từ phòng làm việc của nạn nhân.
+
+Bạn không muốn người khác biết.
+
+Nhưng hành động đó xảy ra trước tối nay và không liên quan trực tiếp tới vụ án.`
+                }
+            ],
+
+            clues:[
+                {
+                    title:"Chiếc khăn tay",
+                    content:"Một chiếc khăn màu tối được tìm thấy gần bếp."
+                }
+            ]
+        },
+
+
+        {
+            role:"ROLE_03",
+
+            pages:[
+                {
+                    title:"Thông tin cá nhân",
+                    content:
+`Bạn là người ít được chú ý nhất trong nhóm.
+
+Bạn nói rằng mình chỉ đến biệt thự vì được mời.
+
+Mối quan hệ của bạn với nạn nhân có vẻ bình thường.`
+                },
+
+                {
+                    title:"Lời khai",
+                    content:
+`Bạn khai rằng khoảng 20:10 mình vẫn ở phòng khách.
+
+Bạn nói rằng khi mất điện, bạn không di chuyển khỏi vị trí.
+
+Bạn cho rằng mình nghe thấy tiếng bước chân ở cầu thang.`
+                },
+
+                {
+                    title:"Lịch trình",
+                    content:
+`18:30 — Có mặt.
+
+19:10 — Ăn tối.
+
+19:45 — Phòng khách.
+
+20:10 — Phòng khách.
+
+20:15 — Mất điện.
+
+20:19 — Điện trở lại.
+
+20:23 — Nghe tiếng động.`
+                },
+
+                {
+                    title:"Tin nhắn",
+                    content:
+`Không có tin nhắn đáng chú ý.
+
+Bạn nói rằng điện thoại gần như không được sử dụng trong buổi tối.`
+                },
+
+                {
+                    title:"Vật chứng",
+                    content:
+`Bạn biết chiếc chìa khóa có dấu X dùng để mở một ngăn tủ ở tầng hai.
+
+Bạn không nói điều này với những người khác.`
+                },
+
+                {
+                    title:"Bí mật",
+                    content:
+`Bạn đã rời phòng khách trong khoảng thời gian mất điện.
+
+Bạn đi lên tầng hai.
+
+Bạn biết chính xác vị trí chiếc tủ có khóa X.
+
+Bạn không muốn ai biết điều này.`
+                }
+            ],
+
+            clues:[
+                {
+                    title:"Chìa khóa X",
+                    content:"Chìa khóa có thể mở một ngăn tủ trên tầng hai."
+                }
+            ]
+        },
+
+
+        {
+            role:"ROLE_04",
+
+            pages:[
+                {
+                    title:"Thông tin cá nhân",
+                    content:
+`Bạn là người cuối cùng được nạn nhân mời tới.
+
+Bạn và nạn nhân từng có một mối bất đồng.
+
+Tuy nhiên bạn không có lý do rõ ràng để gây án.`
+                },
+
+                {
+                    title:"Lời khai",
+                    content:
+`Bạn khai rằng khoảng 20:10 mình ở phòng ăn.
+
+Bạn nghe thấy hai tiếng động nhỏ trước khi điện tắt.
+
+Bạn không nhìn thấy người nào ở hành lang.`
+                },
+
+                {
+                    title:"Lịch trình",
+                    content:
+`18:30 — Có mặt.
+
+19:10 — Ăn tối.
+
+19:45 — Phòng ăn.
+
+20:10 — Phòng ăn.
+
+20:15 — Mất điện.
+
+20:19 — Điện trở lại.
+
+20:23 — Nghe tiếng động tầng hai.`
+                },
+
+                {
+                    title:"Tin nhắn",
+                    content:
+`20:02:
+
+Bạn nhận được:
+
+"Đừng lên tầng hai."
+
+Bạn không biết ai gửi.`
+                },
+
+                {
+                    title:"Vật chứng",
+                    content:
+`Bạn nhìn thấy một vệt bùn rất nhỏ gần cầu thang.
+
+Có vẻ ai đó đã đi từ cửa sau vào nhà.
+
+Vệt bùn hướng về phía cầu thang.`
+                },
+
+                {
+                    title:"Bí mật",
+                    content:
+`Bạn đã từng lên tầng hai trước khi mọi người đến.
+
+Bạn biết căn nhà có một lối đi nhỏ nối phòng kho với hành lang.
+
+Bạn chưa nói chuyện này.`
+                }
+            ],
+
+            clues:[
+                {
+                    title:"Dấu bùn",
+                    content:"Có dấu vết từ cửa sau hướng về cầu thang."
+                }
+            ]
+        }
+
+    ],
+
+    ending:{
+        text:
+`Sau khi đối chiếu các lời khai, chiếc chìa khóa, thời điểm mất điện và lời khai về vị trí của từng người, sự thật cuối cùng được ghép lại.
+
+Hung thủ đã lợi dụng khoảng thời gian mất điện để di chuyển lên tầng hai.
+
+Một lời khai tưởng như rất bình thường lại chứa mâu thuẫn quan trọng nhất.`
+    }
+};
+
+
+/* =====================================================
+ STATE
+===================================================== */
+
+let peer = null;
+
+let isHost = false;
+
+let roomCode = null;
+
+let myId = null;
+
+let myName = "";
+
+let connections = {};
+
+let players = [];
+
+let hostPeerId = null;
+
+let gameState = {
+
+    status:"LOBBY",
+
+    caseStarted:false,
+
+    assignments:{},
+
+    votes:{},
+
+    voteSubmitted:{},
+
+    result:null
+};
+
+let myDossier = null;
+
+let currentPage = 0;
+
+let friends =
+    JSON.parse(
+        localStorage.getItem("case_zero_friends") || "[]"
+    );
+
+
+/* =====================================================
+ BASIC UI
+===================================================== */
+
+function showScreen(id){
+
+    document
+        .querySelectorAll(".screen")
+        .forEach(
+            x => x.classList.add("hidden")
+        );
+
+    document
+        .getElementById(id)
+        .classList.remove("hidden");
+
+    window.scrollTo(0,0);
+}
+
+
+function toast(text){
+
+    const el =
+        document.getElementById("toast");
+
+    el.textContent = text;
+
+    el.classList.add("show");
+
+    setTimeout(
+        () => el.classList.remove("show"),
+        2500
+    );
+}
+
+
+function getName(){
+
+    const input =
+        document.getElementById("username");
+
+    const name =
+        input.value.trim();
+
+    if(!name){
+
+        toast("Hãy nhập tên trước.");
+
+        return null;
+    }
+
+    myName = name;
+
+    localStorage.setItem(
+        "case_zero_name",
+        myName
+    );
+
+    return name;
+}
+
+
+function escapeHTML(str){
+
+    return String(str)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+}
+
+
+/* =====================================================
+ LOAD PROFILE
+===================================================== */
+
+document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+
+        const saved =
+            localStorage.getItem(
+                "case_zero_name"
+            );
+
+        if(saved){
+
+            document
+                .getElementById("username")
+                .value = saved;
+        }
+
+        renderFriends();
+
+    }
+);
+
+
+/* =====================================================
+ FRIENDS
+===================================================== */
+
+function showFriends(){
+
+    if(!getName())
+        return;
+
+    renderFriends();
+
+    showScreen("friends");
+}
+
+
+function addFriend(){
+
+    const input =
+        document.getElementById("friend-name");
+
+    const name =
+        input.value.trim();
+
+    if(!name)
+        return;
+
+    if(
+        friends.some(
+            f =>
+            f.toLowerCase() ===
+            name.toLowerCase()
+        )
+    ){
+
+        toast("Bạn này đã có trong danh sách.");
+
+        return;
+    }
+
+    friends.push(name);
+
+    localStorage.setItem(
+        "case_zero_friends",
+        JSON.stringify(friends)
+    );
+
+    input.value = "";
+
+    renderFriends();
+}
+
+
+function removeFriend(index){
+
+    friends.splice(index,1);
+
+    localStorage.setItem(
+        "case_zero_friends",
+        JSON.stringify(friends)
+    );
+
+    renderFriends();
+}
+
+
+function renderFriends(){
+
+    const list =
+        document.getElementById(
+            "friend-list"
+        );
+
+    if(!list)
+        return;
+
+    if(!friends.length){
+
+        list.innerHTML =
+            `<p class="muted">
+            Chưa có bạn nào.
+            </p>`;
+
+        return;
+    }
+
+    list.innerHTML = "";
+
+    friends.forEach(
+        (name,index) => {
+
+            list.innerHTML += `
+                <div class="friend">
+                    <span>👤 ${escapeHTML(name)}</span>
+                    <button
+                        class="btn btn-danger"
+                        onclick="removeFriend(${index})">
+                        Xóa
+                    </button>
+                </div>
+            `;
+
+        }
+    );
+}
+
+
+/* =====================================================
+ PEER INITIALIZATION
+===================================================== */
+
+function initPeer(callback){
+
+    if(peer){
+
+        callback();
+
+        return;
+    }
+
+    /*
+       PeerJS Cloud provides signaling.
+       No custom backend required for this one-file MVP.
+    */
+
+    peer =
+        new Peer(
+            undefined,
+            {
+                debug:1
+            }
+        );
+
+    peer.on(
+        "open",
+        id => {
+
+            myId = id;
+
+            callback();
+
+        }
+    );
+
+    peer.on(
+        "connection",
+        conn => {
+
+            setupConnection(conn);
+
+        }
+    );
+
+    peer.on(
+        "error",
+        error => {
+
+            console.error(error);
+
+            toast(
+                "Kết nối lỗi: " +
+                error.type
+            );
+
+        }
+    );
+
+    peer.on(
+        "disconnected",
+        () => {
+
+            toast(
+                "Mất kết nối máy chủ kết nối."
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+ CREATE ROOM
+===================================================== */
+
+function createRoom(){
+
+    const name =
+        getName();
+
+    if(!name)
+        return;
+
+    initPeer(
+        () => {
+
+            isHost = true;
+
+            roomCode =
+                randomRoomCode();
+
+            hostPeerId =
+                myId;
+
+            players = [
+
+                {
+                    id:myId,
+                    name:myName,
+                    host:true,
+                    connected:true
+                }
+
+            ];
+
+            gameState = {
+
+                status:"LOBBY",
+
+                caseStarted:false,
+
+                assignments:{},
+
+                votes:{},
+
+                voteSubmitted:{},
+
+                result:null
+            };
+
+            showLobby();
+
+        }
+    );
+}
+
+
+/* =====================================================
+ ROOM CODE
+===================================================== */
+
+function randomRoomCode(){
+
+    const chars =
+        "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    let code = "";
+
+    for(
+        let i=0;
+        i<6;
+        i++
+    ){
+
+        code +=
+            chars[
+                Math.floor(
+                    Math.random() *
+                    chars.length
+                )
+            ];
+
+    }
+
+    return code;
+}
+
+
+/*
+   Room discovery is done through a deterministic
+   PeerJS namespace ID.
+
+   Example:
+   CASEZERO_HOST_ABC123
+
+   The host's Peer ID is NOT the room code,
+   so we keep a registry mapping through localStorage
+   only for same-browser testing.
+
+   For cross-device discovery, users can paste the
+   host peer ID together with room code.
+
+   To make the UX simple, this implementation encodes
+   the host peer ID into the invite string.
+*/
+
+function getInviteString(){
+
+    return roomCode +
+        ":" +
+        hostPeerId;
+}
+
+
+/* =====================================================
+ SHOW LOBBY
+===================================================== */
+
+function showLobby(){
+
+    showScreen("lobby");
+
+    document
+        .getElementById(
+            "room-code-display"
+        )
+        .textContent =
+        roomCode;
+
+    document
+        .getElementById(
+            "invite-code"
+        )
+        .textContent =
+        " " + roomCode;
+
+    renderLobby();
+
+    updateHostControls();
+
+}
+
+
+/* =====================================================
+ JOIN
+===================================================== */
+
+function showJoin(){
+
+    if(!getName())
+        return;
+
+    showScreen("join");
+
+    document
+        .getElementById(
+            "join-code"
+        )
+        .focus();
+}
+
+
+function joinRoom(){
+
+    const name =
+        getName();
+
+    if(!name)
+        return;
+
+    const raw =
+        document
+            .getElementById(
+                "join-code"
+            )
+            .value
+            .trim()
+            .toUpperCase();
+
+    /*
+       Accept:
+
+       ROOMCODE:HOSTPEERID
+
+       This is necessary because PeerJS needs
+       the host Peer ID to connect directly.
+    */
+
+    const parts =
+        raw.split(":");
+
+    if(parts.length !== 2){
+
+        toast(
+            "Mã mời phải có dạng ROOMCODE:HOSTID. Hãy dùng nút Mời trong phòng."
+        );
+
+        return;
+    }
+
+    roomCode =
+        parts[0];
+
+    hostPeerId =
+        parts[1];
+
+    isHost = false;
+
+    initPeer(
+        () => {
+
+            const conn =
+                peer.connect(
+                    hostPeerId,
+                    {
+                        reliable:true
+                    }
+                );
+
+            setupConnection(conn);
+
+            conn.on(
+                "open",
+                () => {
+
+                    conn.send({
+
+                        type:"JOIN",
+
+                        player:{
+                            id:myId,
+                            name:myName,
+                            host:false
+                        }
+
+                    });
+
+                }
+            );
+
+        }
+    );
+}
+
+
+/* =====================================================
+ CONNECTION
+===================================================== */
+
+function setupConnection(conn){
+
+    connections[
+        conn.peer
+    ] = conn;
+
+    conn.on(
+        "open",
+        () => {
+
+            console.log(
+                "Connected:",
+                conn.peer
+            );
+
+        }
+    );
+
+    conn.on(
+        "data",
+        data => {
+
+            handleMessage(
+                conn,
+                data
+            );
+
+        }
+    );
+
+    conn.on(
+        "close",
+        () => {
+
+            delete connections[
+                conn.peer
+            ];
+
+            if(isHost){
+
+                const p =
+                    players.find(
+                        p =>
+                        p.id ===
+                        conn.peer
+                    );
+
+                if(p){
+
+                    p.connected =
+                        false;
+
+                    broadcastState();
+
+                }
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =====================================================
+ HOST SEND
+===================================================== */
+
+function sendTo(peerId,data){
+
+    const conn =
+        connections[peerId];
+
+    if(
+        conn &&
+        conn.open
+    ){
+
+        conn.send(data);
+
+    }
+
+}
+
+
+function broadcast(data){
+
+    Object
+        .values(connections)
+        .forEach(
+            conn => {
+
+                if(conn.open){
+
+                    conn.send(data);
+
+                }
+
+            }
+        );
+
+}
+
+
+function broadcastState(){
+
+    broadcast({
+
+        type:"STATE",
+
+        roomCode,
+
+        hostPeerId,
+
+        players,
+
+        gameState
+
+    });
+
+}
+
+
+/* =====================================================
+ MESSAGE ROUTER
+===================================================== */
+
+function handleMessage(
+    conn,
+    data
+){
+
+    if(!data || !data.type)
+        return;
+
+
+    /* ================================
+       JOIN
+    ================================= */
+
+    if(
+        isHost &&
+        data.type === "JOIN"
+    ){
+
+        if(
+            players.length >= 4
+        ){
+
+            sendTo(
+                conn.peer,
+                {
+                    type:"ERROR",
+                    text:
+                    "Phòng đã đủ 4 người."
+                }
+            );
+
+            return;
+        }
+
+        if(
+            players.some(
+                p =>
+                p.id ===
+                data.player.id
+            )
+        )
+            return;
+
+        players.push({
+
+            id:data.player.id,
+
+            name:data.player.name,
+
+            host:false,
+
+            connected:true
+
+        });
+
+        /*
+           Tell new player the entire room state.
+        */
+
+        sendTo(
+            conn.peer,
+            {
+                type:"STATE",
+
+                roomCode,
+
+                hostPeerId,
+
+                players,
+
+                gameState
+            }
+        );
+
+        broadcastState();
+
+        return;
+    }
+
+
+    /* ================================
+       STATE
+    ================================= */
+
+    if(
+        data.type === "STATE"
+    ){
+
+        roomCode =
+            data.roomCode;
+
+        hostPeerId =
+            data.hostPeerId;
+
+        players =
+            data.players || [];
+
+        gameState =
+            data.gameState;
+
+        if(
+            gameState &&
+            gameState.status ===
+            "INVESTIGATION"
+        ){
+
+            showScreen("game");
+
+        }
+
+        if(
+            gameState &&
+            gameState.status ===
+            "VOTING"
+        ){
+
+            showVote();
+
+        }
+
+        if(
+            gameState &&
+            gameState.status ===
+            "RESULT"
+        ){
+
+            showResult(
+                gameState.result
+            );
+
+        }
+
+        if(
+            !gameState ||
+            gameState.status ===
+            "LOBBY"
+        ){
+
+            showLobby();
+
+        }
+
+        renderLobby();
+
+        return;
+    }
+
+
+    /* ================================
+       STARTED
+    ================================= */
+
+    if(
+        data.type ===
+        "PRIVATE_DOSSIER"
+    ){
+
+        myDossier =
+            data.dossier;
+
+        currentPage = 0;
+
+        renderGame();
+
+        showScreen("game");
+
+        return;
+    }
+
+
+    /* ================================
+       CHAT
+    ================================= */
+
+    if(
+        data.type === "CHAT"
+    ){
+
+        addChatMessage(
+            data.message
+        );
+
+        return;
+    }
+
+
+    /* ================================
+       VOTE
+    ================================= */
+
+    if(
+        data.type === "VOTE"
+    ){
+
+        if(!isHost)
+            return;
+
+        gameState.votes[
+            data.from
+        ] =
+            data.target;
+
+        checkVotes();
+
+        return;
+    }
+
+
+    /* ================================
+       ERROR
+    ================================= */
+
+    if(
+        data.type === "ERROR"
+    ){
+
+        toast(data.text);
+
+        return;
+    }
+
+
+    /* ================================
+       RESULT
+    ================================= */
+
+    if(
+        data.type === "RESULT"
+    ){
+
+        gameState =
+            data.gameState;
+
+        showResult(
+            data.result
+        );
+
+        return;
+    }
+
+}
+
+
+/* =====================================================
+ HOST START CASE
+===================================================== */
+
+function hostStartCase(){
+
+    if(!isHost)
+        return;
+
+    if(
+        players.length !== 4
+    ){
+
+        toast(
+            "Phải đủ 4 người chơi."
+        );
+
+        return;
+    }
+
+    /*
+       Random role assignment
+    */
+
+    const dossiers =
+        [...MASTER_CASE.dossiers]
+            .sort(
+                () =>
+                Math.random() -
+                .5
+            );
+
+    gameState = {
+
+        status:"INVESTIGATION",
+
+        caseStarted:true,
+
+        assignments:{},
+
+        votes:{},
+
+        voteSubmitted:{},
+
+        result:null
+    };
+
+
+    players.forEach(
+        (player,index) => {
+
+            const dossier =
+                dossiers[index];
+
+            gameState
+                .assignments[
+                    player.id
+                ] = {
+
+                    role:
+                        dossier.role
+
+                };
+
+        }
+    );
+
+
+    /*
+       Send each player ONLY their dossier.
+    */
+
+    players.forEach(
+        player => {
+
+            if(
+                player.id ===
+                myId
+            ){
+
+                myDossier =
+                    dossiers[
+                        players.indexOf(
+                            player
+                        )
+                    ];
+
+            }
+            else{
+
+                sendTo(
+                    player.id,
+                    {
+                        type:
+                        "PRIVATE_DOSSIER",
+
+                        dossier:
+                        dossiers[
+                            players.indexOf(
+                                player
+                            )
+                        ]
+                    }
+                );
+
+            }
+
+        }
+    );
+
+
+    /*
+       Host's own dossier.
+    */
+
+    currentPage = 0;
+
+    renderGame();
+
+    showScreen("game");
+
+    broadcastState();
+
+}
+
+
+/* =====================================================
+ GAME RENDER
+===================================================== */
+
+function renderGame(){
+
+    if(!myDossier)
+        return;
+
+    document
+        .getElementById(
+            "case-title"
+        )
+        .textContent =
+        MASTER_CASE.title;
+
+    renderPageNav();
+
+    renderDossierPage();
+
+    renderClues();
+
+    const saved =
+        localStorage.getItem(
+            "case_zero_note_" +
+            roomCode
+        );
+
+    if(saved){
+
+        document
+            .getElementById(
+                "private-note"
+            )
+            .value =
+            saved;
+
+    }
+
+}
+
+
+/* =====================================================
+ PAGE NAV
+===================================================== */
+
+function renderPageNav(){
+
+    const nav =
+        document.getElementById(
+            "page-nav"
+        );
+
+    nav.innerHTML = "";
+
+    myDossier.pages
+        .forEach(
+            (page,index) => {
+
+                const btn =
+                    document.createElement(
+                        "button"
+                    );
+
+                btn.className =
+                    "nav-btn" +
+                    (
+                        index ===
+                        currentPage
+                        ? " active"
+                        : ""
+                    );
+
+                btn.textContent =
+                    `${index+1}. ${page.title}`;
+
+                btn.onclick =
+                    () => {
+
+                        currentPage =
+                            index;
+
+                        renderPageNav();
+
+                        renderDossierPage();
+
+                    };
+
+                nav.appendChild(btn);
+
+            }
+        );
+
+}
+
+
+function renderDossierPage(){
+
+    const page =
+        myDossier.pages[
+            currentPage
+        ];
+
+    document
+        .getElementById(
+            "dossier-view"
+        )
+        .innerHTML = `
+
+            <div class="page-number">
+                TRANG ${currentPage+1}
+                / ${myDossier.pages.length}
+            </div>
+
+            <div class="page-title">
+                ${escapeHTML(page.title)}
+            </div>
+
+            <div class="page-content">
+                ${escapeHTML(page.content)}
+            </div>
+
+            <div class="page-controls">
+
+                <button
+                    class="btn"
+                    onclick="previousPage()">
+                    ← Trước
+                </button>
+
+                <button
+                    class="btn"
+                    onclick="nextPage()">
+                    Tiếp →
+                </button>
+
+            </div>
+        `;
+
+}
+
+
+function previousPage(){
+
+    if(currentPage > 0){
+
+        currentPage--;
+
+        renderPageNav();
+
+        renderDossierPage();
+
+    }
+
+}
+
+
+function nextPage(){
+
+    if(
+        currentPage <
+        myDossier.pages.length-1
+    ){
+
+        currentPage++;
+
+        renderPageNav();
+
+        renderDossierPage();
+
+    }
+
+}
+
+
+/* =====================================================
+ CLUES
+===================================================== */
+
+function renderClues(){
+
+    const list =
+        document.getElementById(
+            "clue-list"
+        );
+
+    list.innerHTML = "";
+
+    if(
+        !myDossier.clues ||
+        !myDossier.clues.length
+    ){
+
+        list.innerHTML =
+            `<div class="muted">
+            Chưa có manh mối.
+            </div>`;
+
+        return;
+    }
+
+    myDossier.clues
+        .forEach(
+            clue => {
+
+                list.innerHTML += `
+
+                    <div class="clue">
+
+                        <div class="clue-title">
+                            🔎
+                            ${escapeHTML(
+                                clue.title
+                            )}
+                        </div>
+
+                        <div class="clue-text">
+                            ${escapeHTML(
+                                clue.content
+                            )}
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+}
+
+
+/* =====================================================
+ NOTES
+===================================================== */
+
+function saveNote(){
+
+    const value =
+        document
+            .getElementById(
+                "private-note"
+            )
+            .value;
+
+    localStorage.setItem(
+        "case_zero_note_" +
+        roomCode,
+        value
+    );
+
+    toast(
+        "Đã lưu ghi chú riêng."
+    );
+
+}
+
+
+/* =====================================================
+ CHAT
+===================================================== */
+
+function sendChat(){
+
+    const input =
+        document
+            .getElementById(
+                "chat-input"
+            );
+
+    const text =
+        input.value.trim();
+
+    if(!text)
+        return;
+
+    const message = {
+
+        id:
+            Date.now() +
+            "_" +
+            Math.random(),
+
+        name:myName,
+
+        text,
+
+        time:
+            Date.now()
+
+    };
+
+    input.value = "";
+
+    /*
+       Host broadcasts.
+       Client sends to host.
+    */
+
+    if(isHost){
+
+        addChatMessage(message);
+
+        broadcast({
+
+            type:"CHAT",
+
+            message
+
+        });
+
+    }
+    else{
+
+        sendTo(
+            hostPeerId,
+            {
+                type:"CHAT",
+                message
+            }
+        );
+
+    }
+
+}
+
+
+function addChatMessage(message){
+
+    const chat =
+        document.getElementById(
+            "chat"
+        );
+
+    if(!chat)
+        return;
+
+    chat.innerHTML += `
+
+        <div class="message">
+
+            <div class="message-name">
+                ${escapeHTML(
+                    message.name
+                )}
+            </div>
+
+            <div class="message-text">
+                ${escapeHTML(
+                    message.text
+                )}
+            </div>
+
+        </div>
+
+    `;
+
+    chat.scrollTop =
+        chat.scrollHeight;
+
+}
+
+
+/* =====================================================
+ VOTING
+===================================================== */
+
+function beginVoting(){
+
+    if(!isHost)
+        return;
+
+    gameState.status =
+        "VOTING";
+
+    gameState.votes = {};
+
+    gameState.voteSubmitted = {};
+
+    broadcastState();
+
+    showVote();
+
+}
+
+
+function showVote(){
+
+    showScreen("vote");
+
+    const grid =
+        document.getElementById(
+            "vote-grid"
+        );
+
+    grid.innerHTML = "";
+
+    players
+        .filter(
+            p =>
+            p.id !== myId
+        )
+        .forEach(
+            player => {
+
+                const div =
+                    document.createElement(
+                        "div"
+                    );
+
+                div.className =
+                    "vote-card";
+
+                div.innerHTML = `
+
+                    <h3>
+                        👤
+                        ${escapeHTML(
+                            player.name
+                        )}
+                    </h3>
+
+                    <p class="muted">
+                        Bạn nghi ngờ người này?
+                    </p>
+
+                    <button
+                        class="btn btn-primary"
+                        onclick="submitVote('${player.id}')">
+                        BỎ PHIẾU
+                    </button>
+
+                `;
+
+                grid.appendChild(div);
+
+            }
+        );
+
+}
+
+
+function submitVote(targetId){
+
+    /*
+       Prevent second vote.
+    */
+
+    if(
+        gameState.voteSubmitted &&
+        gameState.voteSubmitted[
+            myId
+        ]
+    ){
+
+        toast(
+            "Bạn đã bỏ phiếu rồi."
+        );
+
+        return;
+    }
+
+    gameState.voteSubmitted =
+        gameState.voteSubmitted ||
+        {};
+
+    gameState.voteSubmitted[
+        myId
+    ] = true;
+
+
+    if(isHost){
+
+        gameState.votes[
+            myId
+        ] =
+            targetId;
+
+        checkVotes();
+
+    }
+    else{
+
+        sendTo(
+            hostPeerId,
+            {
+                type:"VOTE",
+
+                from:myId,
+
+                target:targetId
+
+            }
+        );
+
+    }
+
+    document
+        .getElementById(
+            "vote-status"
+        )
+        .textContent =
+        "✓ Đã bỏ phiếu. Đang chờ những người khác...";
+
+}
+
+
+function checkVotes(){
+
+    if(!isHost)
+        return;
+
+    const count =
+        Object.keys(
+            gameState.votes
+        ).length;
+
+    if(count < players.length){
+
+        broadcastState();
+
+        return;
+    }
+
+
+    /*
+       Count votes
+    */
+
+    const counts = {};
+
+    Object
+        .values(gameState.votes)
+        .forEach(
+            id => {
+
+                counts[id] =
+                    (counts[id] || 0) + 1;
+
+            }
+        );
+
+
+    const highest =
+        Math.max(
+            ...Object.values(counts)
+        );
+
+    const leaders =
+        Object.keys(counts)
+            .filter(
+                id =>
+                counts[id] ===
+                highest
+            );
+
+
+    /*
+       Tie
+    */
+
+    if(leaders.length > 1){
+
+        gameState.votes = {};
+
+        gameState.voteSubmitted = {};
+
+        broadcast({
+
+            type:"ERROR",
+
+            text:
+            "Hòa phiếu! Vòng bỏ phiếu mới bắt đầu."
+
+        });
+
+        broadcastState();
+
+        showVote();
+
+        return;
+    }
+
+
+    const accusedId =
+        leaders[0];
+
+    const accused =
+        players.find(
+            p =>
+            p.id ===
+            accusedId
+        );
+
+    const accusedRole =
+        gameState
+            .assignments[
+                accusedId
+            ].role;
+
+    const correct =
+        accusedRole ===
+        MASTER_CASE.culpritRole;
+
+
+    const culprit =
+        players.find(
+            p =>
+            gameState
+                .assignments[
+                    p.id
+                ].role ===
+                MASTER_CASE.culpritRole
+        );
+
+
+    const result = {
+
+        correct,
+
+        accusedName:
+            accused.name,
+
+        culpritName:
+            culprit
+            ? culprit.name
+            : "Không xác định",
+
+        culpritRole:
+            MASTER_CASE.culpritRole,
+
+        timeline:
+            MASTER_CASE.timeline,
+
+        ending:
+            MASTER_CASE.ending.text,
+
+        votes:
+            Object.entries(
+                counts
+            )
+            .map(
+                ([id,count]) => {
+
+                    const p =
+                        players.find(
+                            p =>
+                            p.id === id
+                        );
+
+                    return {
+
+                        name:
+                            p
+                            ? p.name
+                            : "?",
+
+                        count
+
+                    };
+
+                }
+            )
+            .sort(
+                (a,b) =>
+                b.count-a.count
+            )
+
+    };
+
+
+    gameState.status =
+        "RESULT";
+
+    gameState.result =
+        result;
+
+    broadcast({
+
+        type:"RESULT",
+
+        result,
+
+        gameState
+
+    });
+
+    showResult(result);
+
+}
+
+
+/* =====================================================
+ RESULT
+===================================================== */
+
+function showResult(result){
+
+    if(!result)
+        return;
+
+    showScreen("result");
+
+    const main =
+        document.getElementById(
+            "result-main"
+        );
+
+    main.innerHTML = `
+
+        <div class="result-box">
+
+            <h2>
+                ${
+                    result.correct
+                    ? "🎉 BẮT ĐÚNG HUNG THỦ!"
+                    : "💀 HUNG THỦ ĐÃ THOÁT!"
+                }
+            </h2>
+
+            <p class="muted">
+                Người bị kết tội:
+                <strong>
+                    ${escapeHTML(
+                        result.accusedName
+                    )}
+                </strong>
+            </p>
+
+            <p class="muted mt">
+                Hung thủ thật sự:
+                <strong class="gold">
+                    ${escapeHTML(
+                        result.culpritName
+                    )}
+                </strong>
+            </p>
+
+        </div>
+
+    `;
+
+
+    const timeline =
+        document.getElementById(
+            "timeline"
+        );
+
+    timeline.innerHTML = "";
+
+    result.timeline
+        .forEach(
+            item => {
+
+                timeline.innerHTML += `
+
+                    <div class="timeline-item">
+
+                        <div class="timeline-time">
+                            ${escapeHTML(
+                                item.time
+                            )}
+                        </div>
+
+                        <div>
+                            ${escapeHTML(
+                                item.event
+                            )}
+                        </div>
+
+                    </div>
+
+                `;
+
+            }
+        );
+
+
+    document
+        .getElementById(
+            "ending"
+        )
+        .textContent =
+        result.ending;
+
+}
+
+
+/* =====================================================
+ LOBBY RENDER
+===================================================== */
+
+function renderLobby(){
+
+    const box =
+        document.getElementById(
+            "lobby-players"
+        );
+
+    if(!box)
+        return;
+
+    box.innerHTML = "";
+
+    players.forEach(
+        player => {
+
+            box.innerHTML += `
+
+                <div class="
+                    player-card
+                    ${player.host ? "host" : ""}
+                ">
+
+                    <div>
+                        <span class="dot"></span>
+
+                        <strong>
+                            ${escapeHTML(
+                                player.name
+                            )}
+                        </strong>
+
+                    </div>
+
+                    <div class="player-role">
+
+                        ${
+                            player.host
+                            ? "👑 HOST"
+                            : "Người chơi"
+                        }
+
+                        ${
+                            !player.connected
+                            ? " • Mất kết nối"
+                            : ""
+                        }
+
+                    </div>
+
+                </div>
+
+            `;
+
+        }
+    );
+
+    updateHostControls();
+
+}
+
+
+function updateHostControls(){
+
+    const controls =
+        document.getElementById(
+            "host-controls"
+        );
+
+    if(!controls)
+        return;
+
+    if(
+        isHost &&
+        players.length === 4
+    ){
+
+        controls.classList.remove(
+            "hidden"
+        );
+
+    }
+    else{
+
+        controls.classList.add(
+            "hidden"
+        );
+
+    }
+
+}
+
+
+/* =====================================================
+ COPY INVITE
+===================================================== */
+
+function copyRoomCode(){
+
+    const invite =
+        getInviteString();
+
+    navigator.clipboard
+        .writeText(invite)
+        .then(
+            () =>
+            toast(
+                "Đã copy mã mời!"
+            )
+        )
+        .catch(
+            () =>
+            toast(
+                "Mã mời: " +
+                invite
+            )
+        );
+
+}
+
+
+/* =====================================================
+ PLAY AGAIN
+===================================================== */
+
+function playAgain(){
+
+    if(!isHost){
+
+        toast(
+            "Chỉ host có thể bắt đầu lại."
+        );
+
+        return;
+    }
+
+    gameState = {
+
+        status:"LOBBY",
+
+        caseStarted:false,
+
+        assignments:{},
+
+        votes:{},
+
+        voteSubmitted:{},
+
+        result:null
+
+    };
+
+    myDossier = null;
+
+    broadcastState();
+
+    showLobby();
+
+}
+
+
+/* =====================================================
+ LEAVE
+===================================================== */
+
+function confirmLeave(){
+
+    if(
+        confirm(
+            "Bạn có chắc muốn rời vụ án?"
+        )
+    ){
+
+        leaveRoom();
+
+    }
+
+}
+
+
+function leaveRoom(){
+
+    Object
+        .values(connections)
+        .forEach(
+            c => {
+
+                try{
+                    c.close();
+                }
+                catch(e){}
+
+            }
+        );
+
+    connections = {};
+
+    players = [];
+
+    roomCode = null;
+
+    hostPeerId = null;
+
+    isHost = false;
+
+    myDossier = null;
+
+    showScreen("home");
+
+}
+
+
+/* =====================================================
+ CHAT ENTER
+===================================================== */
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if(
+            event.key === "Enter" &&
+            document.activeElement?.id ===
+            "chat-input"
+        ){
+
+            sendChat();
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+ HOST INVESTIGATION → VOTE BUTTON
+===================================================== */
+
+/*
+   Double-click phase label 5 times to open vote.
+   This is deliberately hidden as a temporary MVP control.
+
+   Later UI can have a proper "Open voting" button.
+*/
+
+let adminClicks = 0;
+
+document.addEventListener(
+    "dblclick",
+    event => {
+
+        if(
+            !isHost ||
+            !gameState.caseStarted
+        )
+            return;
+
+        if(
+            event.target.id !==
+            "game-phase"
+        )
+            return;
+
+        adminClicks++;
+
+        if(adminClicks >= 2){
+
+            adminClicks = 0;
+
+            if(
+                confirm(
+                    "Mở vòng bỏ phiếu cho tất cả?"
+                )
+            ){
+
+                beginVoting();
+
+            }
+
+        }
+
+    }
+);
+
+
+/* =====================================================
+ HELPER
+===================================================== */
+
+window.showSetup =
+    function(){
+
+        showScreen("home");
+
+    };
+
+
+/*
+=====================================================
+IMPORTANT FIRST-TIME INSTRUCTIONS
+=====================================================
+
+Host:
+1. Enter name.
+2. Create room.
+3. Copy invite string.
+4. Send to 3 friends.
+5. Friends paste invite string.
+6. Wait for 4 players.
+7. Start case.
+
+Invite format:
+ABC123:peer-id
+
+The room code itself is only the first part.
+The complete string is needed because PeerJS
+needs the host Peer ID.
+
+=====================================================
+*/
+
+</script>
+
+</body>
+</html>
